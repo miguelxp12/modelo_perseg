@@ -1,4 +1,4 @@
-```python
+
 import os
 
 FORECAST_DSS_PER_SEG_FOLDER = os.getenv("FORECAST_DSS_PER_SEG_FOLDER")
@@ -54,4 +54,3 @@ COD_COUNTRIES = [
     'DO',
     'PR'
 ]
-```

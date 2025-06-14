@@ -1,4 +1,3 @@
-```python
 import os
 from typing import Dict, Any
 import argparse
@@ -103,4 +102,3 @@ def parser_arguments(conf_params: Dict) -> Dict[str, Any]:
     known_args, _ = parser.parse_known_args()
     args = vars(known_args)
     return args
-```

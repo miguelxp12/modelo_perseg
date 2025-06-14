@@ -1,4 +1,3 @@
-```python
 import http.client
 import json
 
@@ -36,4 +35,3 @@ class APIData:
         res = conn.getresponse()
         data = res.read()
         print(data.decode("utf-8"))
-```

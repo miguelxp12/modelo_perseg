@@ -1,4 +1,3 @@
-```python
 from abc import ABC, abstractmethod
 import pandas as pd
 from typing import Tuple
@@ -31,4 +30,3 @@ class PreprocessInter(ABC):
         country_code: str
     ) -> None:
         pass
-```

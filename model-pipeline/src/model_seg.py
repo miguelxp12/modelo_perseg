@@ -1,4 +1,3 @@
-```python
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error
 from util.s3_manager import S3Buckets
@@ -389,4 +388,3 @@ class ModelSeg(ModelInter):
             'shap_metrics_under',
             _bar=True
         )
-```

@@ -1,4 +1,3 @@
-```python
 # for local tests
 from dotenv import load_dotenv
 load_dotenv('forecastperseg.env')
@@ -195,4 +194,3 @@ if __name__ == "__main__":
                     MODEL_SEG,
                     predict_serv
                 )
-```

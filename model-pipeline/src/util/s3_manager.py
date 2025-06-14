@@ -1,4 +1,3 @@
-```python
 import boto3
 import io
 from typing import Any
@@ -110,4 +109,4 @@ class S3Buckets:
                 Body=obj,
                 ContentType='image/png'
             )
-```
+

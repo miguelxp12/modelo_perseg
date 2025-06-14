@@ -1,4 +1,3 @@
-```python
 import pandas as pd
 import os
 from typing import Tuple
@@ -413,4 +412,3 @@ class PreProcessDataPer(PreprocessInter):
             format=S3Buckets.PLOT_FORMAT
         )
         plt.close()
-```

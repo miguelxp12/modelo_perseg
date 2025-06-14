@@ -1,4 +1,3 @@
-```python
 import io
 from typing import List
 import pandas as pd
@@ -158,4 +157,3 @@ class TrainDataService:
         for col in df.columns:
             if col not in object_columns:
                 df[col] = df[col].astype('float64')
-```

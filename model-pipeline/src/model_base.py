@@ -1,4 +1,3 @@
-```python
 from abc import ABC, abstractmethod
 import pandas as pd
 from typing import List
@@ -60,4 +59,3 @@ class ModelInter(ABC):
         country_model: str
     ) -> None:
         pass
-```

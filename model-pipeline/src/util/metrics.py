@@ -1,4 +1,3 @@
-```python
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -113,4 +112,3 @@ class Metrics:
             'MAPE': mape,
             'Bias': bias
         })
-```
