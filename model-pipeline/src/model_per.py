@@ -145,7 +145,7 @@ class ModelPer(ModelInter):
             index=df_train[columns].columns
         )
         feat_imp = feat_imp.nlargest(20).sort_values()
-        plt.plot(kind='barh', figsize=(6,8), color='#CA0D0A') # Corrected: This should be feat_imp.plot(...)
+        feat_imp.plot(kind='barh', figsize=(6,8), color='#CA0D0A')
         plt.title("Importance Feature")
 
         country_path = f'codpais={country_model}/' if country_model else ''
