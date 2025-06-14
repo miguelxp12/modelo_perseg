@@ -1,10 +1,12 @@
-FROM python:3.10
+FROM --platform=linux/amd64 python:3.10-slim-bullseye
 
-ENV PYTHONUNBUFFERED=TRUE
-# Define a working directory
-WORKDIR /app
-
-RUN apt-get update && apt-get install -y wget &&     wget https://bootstrap.pypa.io/get-pip.py &&     python3.10 get-pip.py &&     rm get-pip.py &&     apt-get remove -y wget &&     apt-get clean
+RUN apt-get update && apt-get install -y wget && \
+    wget https://bootstrap.pypa.io/get-pip.py && \
+    python3.10 get-pip.py && \
+    rm get-pip.py && \
+    apt-get remove -y wget && \
+    apt-get clean
+RUN apt-get update && apt-get install -y libgomp1
 
 # Copy the environment file first
 COPY forecastperseg.env .

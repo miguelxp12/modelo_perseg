@@ -63,6 +63,7 @@ class PreProcessDataPer(PreprocessInter):
         # que se usa para transformaciones
         'PUP',
         'ES_PADRE',
+        'REACTIONFLAG',
         'COD_PERIODO',
         'COD_PAIS',
         'DES_MARCA',
@@ -121,6 +122,7 @@ class PreProcessDataPer(PreprocessInter):
         "AVG_CATEGORIAOFERTA_PROPORTION_HOGAR": "float64",
         "PUP": "float64",
         "ES_PADRE": "int64",
+        "REACTIONFLAG": "int64",
         "COD_PERIODO": "int64",
         "COD_PAIS": "object",
         "DES_MARCA": "object",
