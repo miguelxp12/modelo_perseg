@@ -25,7 +25,7 @@ class Metrics:
         y_name_to_predict = "PUP_PREDICT"
         df_predicted[y_name_to_predict] = np.where(df_predicted[y_name_to_predict].astype(float) < 0, 0.0,
                                                         df_predicted[y_name_to_predict].astype(float),)
-        df_predicted["D_E"] = 0
+        df_predicted["D_E"] = 0.0
         df_predicted.loc[(df_predicted[y_name_to_predict] <= 0.0) & (df_predicted.PUP_CALCULADO > 0.0), "D_E",] = 2.01
         df_predicted.loc[(df_predicted[y_name_to_predict] <= 0.0) & (df_predicted.PUP_CALCULADO == 0.0), "D_E",] = 9999
         df_predicted.loc[(df_predicted[y_name_to_predict] > 0.0), "D_E"] = (df_predicted.PUP_CALCULADO / df_predicted[y_name_to_predict])

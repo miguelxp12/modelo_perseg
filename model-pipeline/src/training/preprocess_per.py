@@ -12,6 +12,7 @@ class PreProcessDataPer(PreprocessInter):
 
     VARS_TARGET = 'PUP_CALCULADO'
     VARS_TO_PROCESS_AND_TRAIN = [
+        'COD_CUC',
         'FACTOR_CUADRE',
         'FACTOR_REPETICION',
         'COUNT_COD_SAP',
@@ -72,6 +73,7 @@ class PreProcessDataPer(PreprocessInter):
         'REAL_UNIDADES_VENDIDAS'
     ]
     DATA_MAP_DTYPE = {
+        "COD_CUC":"object",
         "FACTOR_CUADRE": "float64",
         "FACTOR_REPETICION": "float64",
         "COUNT_COD_SAP": "int64",
