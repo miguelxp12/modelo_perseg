@@ -75,16 +75,12 @@ def run_training_process(
 
         x_train = data_res[0]
         y_train = data_res[1]
-        x_test = data_res[2]
-        y_test = data_res[3]
+        # x_test and y_test are no longer returned
 
         model_serv = ModelServ(
             x_train,
             y_train,
-            x_test,
-            y_test,
             preproc_data_serv.weights_train,
-            preproc_data_serv.weights_test,
             type_model,
             PreProcessData.VAR_CATEGORICAS_2
         )
@@ -106,27 +102,27 @@ def run_training_process(
                 country,
                 name_dataset='training'
             )
-            model_serv.save_metrics_for_ds(
-                preproc_data_serv.get_data_test(),
-                preproc_data_serv.FINAL_COLUMNS,
-                campaign,
-                country,
-                name_dataset='testing'
-            )
-            model_serv.save_metrics_test_without_outliers(
-                preproc_data_serv.get_data_test(),
-                preproc_data_serv.FINAL_COLUMNS,
-                preproc_data_serv.VARS_TARGET,
-                campaign,
-                country,
-                name_dataset='testing_without_outliers'
-            )
-            model_serv.save_shap_metrics(
-                preproc_data_serv.get_data_test(),
-                preproc_data_serv.FINAL_COLUMNS,
-                campaign,
-                country
-             )
+            # model_serv.save_metrics_for_ds(
+            #     preproc_data_serv.get_data_test(), # Removed
+            #     preproc_data_serv.FINAL_COLUMNS,
+            #     campaign,
+            #     country,
+            #     name_dataset='testing'
+            # )
+            # model_serv.save_metrics_test_without_outliers(
+            #     preproc_data_serv.get_data_test(), # Removed
+            #     preproc_data_serv.FINAL_COLUMNS,
+            #     preproc_data_serv.VARS_TARGET,
+            #     campaign,
+            #     country,
+            #     name_dataset='testing_without_outliers'
+            # )
+            # model_serv.save_shap_metrics(
+            #     preproc_data_serv.get_data_test(), # Removed
+            #     preproc_data_serv.FINAL_COLUMNS,
+            #     campaign,
+            #     country
+            #  )
 
     except Exception as e:
         print(f"error: {e}")

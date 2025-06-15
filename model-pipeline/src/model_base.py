@@ -30,32 +30,9 @@ class ModelInter(ABC):
     @abstractmethod
     def save_metrics_for_ds(
         self,
-        df_: pd.DataFrame,
-        columns: List[str],
-        name_model: str,
-        country_model: str,
-        name_dataset: str
-    ) -> None:
-        pass
-
-    @abstractmethod
-    def save_metrics_test_without_outliers(
-        self,
-        df_test: pd.DataFrame,
-        columns: List[str],
-        columns_target: List[str],
-        name_model: str,
-        country_model: str,
-        name_dataset: str
-    ) -> None:
-        pass
-
-    @abstractmethod
-    def save_shap_metrics(
-        self,
-        df_: pd.DataFrame,
-        columns: List[str],
-        name_model: str,
-        country_model: str
+        df_train_raw: pd.DataFrame,
+        final_columns: list,
+        anio_campana: str,
+        country_code: str
     ) -> None:
         pass

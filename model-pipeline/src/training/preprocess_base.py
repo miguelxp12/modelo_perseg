@@ -8,7 +8,7 @@ class PreprocessInter(ABC):
     @abstractmethod
     def prepare_data(
         self
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         pass
 
     @abstractmethod

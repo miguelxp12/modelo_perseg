@@ -239,10 +239,7 @@ class PreProcessDataSeg(PreprocessInter):
 
     df: pd.DataFrame
     df_train: pd.DataFrame
-    df_test: pd.DataFrame
-    df_train_orig: pd.DataFrame
     weights_train: pd.DataFrame
-    weights_test: pd.DataFrame
 
     def __init__(
         self,
@@ -254,7 +251,7 @@ class PreProcessDataSeg(PreprocessInter):
 
     def prepare_data(
         self
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
         # preprocess for data from s3 buckets.
         self.df = self.df.dropna(subset=['REACTIONFLAG'])
@@ -334,10 +331,9 @@ class PreProcessDataSeg(PreprocessInter):
         self.df['DESCATEGORIA3'] = self.df['DES_CATEGORIA'].map(self.DICT_CATEGORIA).fillna(1)
 
         self.df = self.df[self.df[self.VARS_TARGET].notnull()]
-        self.df, self.df_train_orig, self.df_test = self.split_by_percentage(self.df, self.PERCENTAGE_SPLIT)
 
-        self.df_train = self.df_train_orig.copy()
-        self.df_train = self.df_train_orig[(self.df_train['PUP_CALCULADO'] <= self.UPPER_BOUND)]
+        self.df_train = self.df.copy() # Assign self.df and then filter
+        self.df_train = self.df_train[(self.df_train['PUP_CALCULADO'] <= self.UPPER_BOUND)]
         self.df_train = self.df_train[self.df_train['DES_CLASE'].isin([
             'CUIDADO PERSONAL',
             'FRAGANCIAS',
@@ -347,24 +343,17 @@ class PreProcessDataSeg(PreprocessInter):
         ])]
 
         self.weights_train = self.df_train['REAL_UNIDADES_VENDIDAS']
-        self.weights_test = self.df_test['REAL_UNIDADES_VENDIDAS']
 
         # print information
-        #self.print_information_datasets_from_percentage_split()
         self.print_outliers_v1(self.df_train)
         self.print_outliers_v2(self.df_train)
 
         x_train = self.df_train[self.FINAL_COLUMNS].copy()
         y_train = self.df_train[self.VARS_TARGET].copy()
 
-        x_test = self.df_test[self.FINAL_COLUMNS].copy()
-        y_test = self.df_test[self.VARS_TARGET].copy()
-
         return (
             x_train,
-            y_train,
-            x_test,
-            y_test
+            y_train
         )
 
     def split_by_periodo(
@@ -378,14 +367,6 @@ class PreProcessDataSeg(PreprocessInter):
         df_test  = df[df['type_subset'] == '2. Test'].copy()
         return df, df_train, df_test
 
-    def split_by_percentage(
-        self,
-        df: pd.DataFrame,
-        percentage: float
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        df_train, df_test = train_test_split(df, train_size=percentage)
-        return df, df_train, df_test
-
     def print_information_datasets_from_period_split(
         self
     ) -> None:
@@ -397,26 +378,6 @@ class PreProcessDataSeg(PreprocessInter):
         print('TRAINING SET')
         print(self.df_train['COD_PERIODO'].value_counts(dropna=False))
         print(self.df_train[self.VARS_TARGET].mean())
-        print('TEST SET')
-        print(self.df_test['COD_PERIODO'].value_counts(dropna=False))
-        print(self.df_test[self.VARS_TARGET].mean())
-
-    def print_information_datasets_from_percentage_split(
-        self
-    ) -> None:
-        print(f'================================================')
-        print(f"total de rows para data train raw: {self.df_train_orig.shape[0]}")
-        print(f"total de rows para data train procesada: {self.df_train.shape[0]}")
-        print(f"total de rows para data test: {self.df_test.shape[0]}")
-        print(f'================================================')
-        print('TOTAL BASE DESPUES SPLIT')
-        print(self.df[self.VARS_TARGET].mean())
-        print('TRAINING SET')
-        print(self.df_train['COD_PERIODO'].value_counts(dropna=False))
-        print(self.df_train[self.VARS_TARGET].mean())
-        print('TEST SET')
-        print(self.df_test['COD_PERIODO'].value_counts(dropna=False))
-        print(self.df_test[self.VARS_TARGET].mean())
 
     def print_outliers_v1(
         self,
@@ -445,16 +406,6 @@ class PreProcessDataSeg(PreprocessInter):
         print('% DE OUTLIERS SIENDO ELIMINADOS EN PUP')
         print(outliers_v2.groupby(['COD_PAIS','COD_PERIODO'])['PUP_CALCULADO'].sum() / df_train.groupby(['COD_PAIS','COD_PERIODO'])['PUP_CALCULADO'].sum())
         print(outliers_v2.groupby(['COD_PAIS'])['PUP_CALCULADO'].sum() / df_train.groupby(['COD_PAIS'])['PUP_CALCULADO'].sum())
-
-    def get_data_train_raw(
-        self
-    ) -> pd.DataFrame:
-        return self.df_train_orig
-
-    def get_data_test(
-        self
-    ) -> pd.DataFrame:
-        return self.df_test
 
     def generate_data_metrics(
         self,
