@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+from typing import Optional, Tuple
 from typing import Tuple
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
@@ -221,45 +222,54 @@ class PreProcessDataPer(PreprocessInter):
         self.df = _df
 
     def prepare_data(
-        self
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-
-        # preprocess for data from s3 buckets.
+        self,
+        is_production: bool = True
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[pd.DataFrame], Optional[pd.DataFrame]]:
+        # Preprocess general
         self.df = self.df.dropna(subset=['REACTIONFLAG'])
         self.df = self.df[self.VARS_TO_PROCESS_AND_TRAIN]
         self.df = self.df.astype(self.DATA_MAP_DTYPE)
-
         self.df['PUP_CALCULADO'] = self.df['PUP']
         self.df = self.df[self.df['ES_PADRE'] == 1]
         self.df['DESMARCA3'] = self.df['DES_MARCA'].map(self.DICT_MARCA).fillna(1)
         self.df['DESCATEGORIA3'] = self.df['DES_CATEGORIA'].map(self.DICT_CATEGORIA).fillna(1)
         self.df = self.df[self.df[self.VARS_TARGET].notnull()]
-        self.df, self.df_train_orig, self.df_test = self.split_by_percentage(self.df, self.PERCENTAGE_SPLIT)
-        self.df_train = self.df_train_orig.copy()
-        self.df_train = self.df_train_orig[(self.df_train['PUP_CALCULADO'] <= self.UPPER_BOUND)]
-        # self.df_train = self.df_train[self.df_train['DESCLASE'].isin(['CUIDADO PERSONAL','FRAGANCIAS','MAQUILLAJE'])]
-        self.df_train = self.df_train[self.df_train['DES_CLASE'].isin(['CUIDADO PERSONAL','FRAGANCIAS','MAQUILLAJE'])]
 
-        self.weights_train = self.df_train['REAL_UNIDADES_VENDIDAS']
-        self.weights_test = self.df_test['REAL_UNIDADES_VENDIDAS']
+        if is_production:
+            # Producción: usa todo el dataset
+            df_train = self.df.copy()
+            df_train = df_train[(df_train['PUP_CALCULADO'] <= self.UPPER_BOUND)]
+            df_train = df_train[df_train['DES_CLASE'].isin(['CUIDADO PERSONAL','FRAGANCIAS','MAQUILLAJE'])]
+            self.df_train_orig = df_train  # ✅ agregado
+            self.df_test = None
+            self.weights_train = df_train['REAL_UNIDADES_VENDIDAS']  # ✅ Agregado
+            self.weights_test = None  # ✅ Para mantener consistencia
 
-        # print information
-        #self.print_information_datasets_from_percentage_split()
-        self.print_outliers_v1(self.df_train)
-        self.print_outliers_v2(self.df_train)
+            x_train = df_train[self.FINAL_COLUMNS].copy()
+            y_train = df_train[self.VARS_TARGET].copy()
 
-        x_train = self.df_train[self.FINAL_COLUMNS].copy()
-        y_train = self.df_train[self.VARS_TARGET].copy()
+            return x_train, y_train, None, None
 
-        x_test = self.df_test[self.FINAL_COLUMNS].copy()
-        y_test = self.df_test[self.VARS_TARGET].copy()
+        else:
+            # Desarrollo: split entre train/test
+            self.df, self.df_train_orig, self.df_test = self.split_by_percentage(self.df, self.PERCENTAGE_SPLIT)
 
-        return (
-            x_train,
-            y_train,
-            x_test,
-            y_test
-        )
+            df_train = self.df_train_orig.copy()
+            df_train = df_train[(df_train['PUP_CALCULADO'] <= self.UPPER_BOUND)]
+            df_train = df_train[df_train['DES_CLASE'].isin(['CUIDADO PERSONAL','FRAGANCIAS','MAQUILLAJE'])]
+            self.weights_train = df_train['REAL_UNIDADES_VENDIDAS']
+            self.weights_test = self.df_test['REAL_UNIDADES_VENDIDAS']
+
+            x_train = df_train[self.FINAL_COLUMNS].copy()
+            y_train = df_train[self.VARS_TARGET].copy()
+            x_test = self.df_test[self.FINAL_COLUMNS].copy()
+            y_test = self.df_test[self.VARS_TARGET].copy()
+
+            self.print_outliers_v1(df_train)
+            self.print_outliers_v2(df_train)
+
+            return x_train, y_train, x_test, y_test
+
 
     def split_by_periodo(
         self,

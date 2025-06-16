@@ -58,14 +58,12 @@ def run_training_process(
             )
             df_data_raw.to_csv('df_train.csv', sep='	')
         else:
-            df_data_raw = train_data_serv.generated_corportivo_df(
-                campaign
-            )
+            df_data_raw = train_data_serv.generated_corportivo_df(campaign)
 
         print(df_data_raw.info())
         print(f"shape: {df_data_raw.shape}")
         preproc_data_serv = PreProcessData(df_data_raw)
-        data_res = preproc_data_serv.prepare_data()
+        data_res = preproc_data_serv.prepare_data(is_production=True)
 
         if save_features:
             preproc_data_serv.generate_data_metrics(
@@ -106,6 +104,7 @@ def run_training_process(
                 country,
                 name_dataset='training'
             )
+        if x_test is not None and y_test is not None:
             model_serv.save_metrics_for_ds(
                 preproc_data_serv.get_data_test(),
                 preproc_data_serv.FINAL_COLUMNS,

@@ -15,6 +15,9 @@ import io
 from model_base import ModelInter
 import random
 import numpy as np
+import os
+import datetime
+
 
 
 class ModelPer(ModelInter):
@@ -84,31 +87,50 @@ class ModelPer(ModelInter):
             categorical_feature=self.vars_categoricas2,
             eval_set=[(self.x_train, self.y_train)]
         )
+        if not getattr(self, "is_production", True):
+            test_pred = self.best_model.predict(self.x_test)
+            test_wsmape = self._weighted_smape(
+                self.y_test.values,
+                test_pred,
+                self.weights_test.values
+            )
 
-        test_pred = self.best_model.predict(self.x_test)
-        test_wsmape = self._weighted_smape(
-            self.y_test.values,
-            test_pred,
-            self.weights_test.values
-        )
+            print(
+                "Optuna Optimized Model MAE: "
+                f"{mean_absolute_error(self.y_test, test_pred):.7f}"
+            )
+            print(
+                "Optuna Optimized W-SMAPE: "
+                f"{test_wsmape:.7f}"
+            )
+        else:
+            # Guardar log básico del entrenamiento en producción
+            log_dir = "logs"
+            os.makedirs(log_dir, exist_ok=True)
+            log_file = os.path.join(log_dir, "train_production.log")
+            
+            with open(log_file, "a") as f:
+                f.write("========== ENTRENAMIENTO EN PRODUCCIÓN ==========\n")
+                f.write(f"Fecha: {datetime.datetime.now()}\n")
+                f.write(f"Modelo: {self.__class__.__name__}\n")
+                f.write(f"Hiperparámetros: {self.HYPERPARAMETERS}\n")
+                f.write(f"Shape x_train: {self.x_train.shape}\n")
+                f.write(f"Shape y_train: {self.y_train.shape}\n")
+                f.write("=================================================\n\n")
 
-        print(
-            "Optuna Optimized Model MAE: "
-            f"{mean_absolute_error(self.y_test, test_pred):.7f}"
-        )
-        print(
-            "Optuna Optimized W-SMAPE: "
-            f"{test_wsmape:.7f}"
-        )
+            print("Modelo entrenado en modo producción. Log guardado.")
 
-    def predict(
-        self
-    ) -> None:
+    def predict(self) -> None:
+        if getattr(self, "is_production", True):
+            print("Producción: no se ejecuta predict() porque no hay datos de test.")
+            return
+
         test_pred = self.best_model.predict(self.x_test)
         print(
             "Optuna Optimized Model MAE: "
             f"{mean_absolute_error(self.y_test, test_pred):.4f}"
         )
+
 
     def save(
         self,
