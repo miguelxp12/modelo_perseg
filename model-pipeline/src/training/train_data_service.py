@@ -79,6 +79,7 @@ class TrainDataService:
             codpais,
             aniocampana
         )
+        
         ll_parquets = [item for item in ll_parquets if '.parquet' in item]
         if ll_parquets:
             df_train = self._instance_df(ll_parquets[0])

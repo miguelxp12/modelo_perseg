@@ -74,9 +74,7 @@ class ModelPer(ModelInter):
         numerator   = np.abs(y_pred - y_true) / ((np.abs(y_pred) + np.abs(y_true)) / 2)
         return np.sum(numerator * demand) / denominator
 
-    def train(
-        self
-    ) -> None:
+    def train(self) -> None:
         random.seed(self.SEED)
         np.random.seed(self.SEED)
 

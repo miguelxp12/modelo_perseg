@@ -221,10 +221,7 @@ class PreProcessDataPer(PreprocessInter):
     ) -> None:
         self.df = _df
 
-    def prepare_data(
-        self,
-        is_production: bool = True
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[pd.DataFrame], Optional[pd.DataFrame]]:
+    def prepare_data(self,is_production: bool = True) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[pd.DataFrame], Optional[pd.DataFrame]]:
         # Preprocess general
         self.df = self.df.dropna(subset=['REACTIONFLAG'])
         self.df = self.df[self.VARS_TO_PROCESS_AND_TRAIN]

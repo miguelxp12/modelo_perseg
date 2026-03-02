@@ -15,6 +15,8 @@ import io
 from model_base import ModelInter
 import random
 import numpy as np
+import os
+import datetime
 
 
 class ModelSeg(ModelInter):
@@ -73,42 +75,54 @@ class ModelSeg(ModelInter):
         numerator   = np.abs(y_pred - y_true) / ((np.abs(y_pred) + np.abs(y_true)) / 2)
         return np.sum(numerator * demand) / denominator
 
-    def train(
-        self,
-    ):
+    def train(self) -> None:
         random.seed(self.SEED)
         np.random.seed(self.SEED)
-
-        # Train final model with best params
         self.best_model = lgb.LGBMRegressor(**self.HYPERPARAMS, random_state=self.SEED)
-        print(f"columns: {self.x_train.columns.tolist()}")
-        print(f"self.vars_categoricas2: {self.vars_categoricas2}")
         self.best_model.fit(
             self.x_train,
             self.y_train,
             categorical_feature=self.vars_categoricas2,
             eval_set=[(self.x_train, self.y_train)]
         )
+        if not getattr(self, "is_production", True):
+            test_pred = self.best_model.predict(self.x_test)
+            test_wsmape = self._weighted_smape(
+                self.y_test.values,
+                test_pred,
+                self.weights_test.values
+            )
 
-        test_pred = self.best_model.predict(self.x_test)
-        test_wsmape = self._weighted_smape(
-            self.y_test.values,
-            test_pred,
-            self.weights_test.values
-        )
+            print(
+                "Optuna Optimized Model MAE: "
+                f"{mean_absolute_error(self.y_test, test_pred):.7f}"
+            )
+            print(
+                "Optuna Optimized W-SMAPE: "
+                f"{test_wsmape:.7f}"
+            )
+        else:
+            # Guardar log básico del entrenamiento en producción
+            log_dir = "logs"
+            os.makedirs(log_dir, exist_ok=True)
+            log_file = os.path.join(log_dir, "train_production.log")
+            
+            with open(log_file, "a") as f:
+                f.write("========== ENTRENAMIENTO EN PRODUCCIÓN ==========\n")
+                f.write(f"Fecha: {datetime.datetime.now()}\n")
+                f.write(f"Modelo: {self.__class__.__name__}\n")
+                f.write(f"Hiperparámetros: {self.HYPERPARAMS}\n")
+                f.write(f"Shape x_train: {self.x_train.shape}\n")
+                f.write(f"Shape y_train: {self.y_train.shape}\n")
+                f.write("=================================================\n\n")
 
-        print(
-            "Optuna Optimized Model MAE: "
-            f"{mean_absolute_error(self.y_test, test_pred):.7f}"
-        )
-        print(
-            "Optuna Optimized W-SMAPE: "
-            f"{test_wsmape:.7f}"
-        )
+            print("Modelo entrenado en modo producción. Log guardado.")
 
-    def predict(
-        self
-    ) -> Any:
+    def predict(self) -> Any:
+        if getattr(self, "is_production", True):
+            print("Producción: no se ejecuta predict() porque no hay datos de test.")
+            return
+
         test_pred = self.best_model.predict(self.x_test)
         print(
             "Optuna Optimized Model MAE: "
@@ -173,14 +187,14 @@ class ModelSeg(ModelInter):
         name_dataset: str
     ) -> None:
         df_['PUP_PREDICT'] = self.best_model.predict(df_[columns])
-        llave = ['COD_PERIODO','COD_PAIS','COD_CUC','DESMARCA','DESCATEGORIA'] # Check: DESMARCA vs DESMARCA3, DESCATEGORIA vs DESCATEGORIA3
+        llave = ['COD_PERIODO','COD_PAIS','COD_CUC','DES_MARCA','DES_CATEGORIA'] # Check: DESMARCA vs DESMARCA3, DESCATEGORIA vs DESCATEGORIA3
         primera_agrupacion = df_.groupby(llave).agg({
             'PUP_CALCULADO': 'sum',
             'PUP_PREDICT': 'sum',
             'REAL_UNIDADES_VENDIDAS': 'sum'
         })
         metric_1 = primera_agrupacion.groupby(['COD_PAIS', 'COD_PERIODO']).apply(Metrics.compute_aggregates).reset_index()
-        metric_2 = primera_agrupacion.groupby(['COD_PAIS', 'COD_PERIODO','DESCATEGORIA']).apply(Metrics.compute_aggregates).reset_index() # Check: DESCATEGORIA vs DESCATEGORIA3
+        metric_2 = primera_agrupacion.groupby(['COD_PAIS', 'COD_PERIODO','DES_CATEGORIA']).apply(Metrics.compute_aggregates).reset_index() # Check: DESCATEGORIA vs DESCATEGORIA3
 
         country_path = f'codpais={country_model}/' if country_model else ''
         s3_serv = S3Buckets()
@@ -257,7 +271,7 @@ class ModelSeg(ModelInter):
         y_test_cleaned2 = df_test_cleaned2[columns_target].copy()
         print(f"Optuna Optimized Model MAE: {mean_absolute_error(y_test_cleaned2, df_test_cleaned2['PUP_PREDICT'] ):.6f}")
 
-        llave = ['COD_PERIODO','COD_PAIS','COD_CUC','DESMARCA','DESCATEGORIA'] # Check: DESMARCA vs DESMARCA3, DESCATEGORIA vs DESCATEGORIA3
+        llave = ['COD_PERIODO','COD_PAIS','COD_CUC','DES_MARCA','DES_CATEGORIA'] # Check: DESMARCA vs DESMARCA3, DESCATEGORIA vs DESCATEGORIA3
         primera_agrupacion_test = df_test_cleaned1.groupby(llave).agg({
             'PUP_CALCULADO': 'sum',
             'PUP_PREDICT': 'sum',
@@ -265,7 +279,7 @@ class ModelSeg(ModelInter):
         })
 
         metric_1 = primera_agrupacion_test.groupby(['COD_PAIS', 'COD_PERIODO']).apply(Metrics.compute_aggregates).reset_index()
-        metric_2 = primera_agrupacion_test.groupby(['COD_PAIS', 'COD_PERIODO','DESCATEGORIA']).apply(Metrics.compute_aggregates).reset_index() # Check: DESCATEGORIA vs DESCATEGORIA3
+        metric_2 = primera_agrupacion_test.groupby(['COD_PAIS', 'COD_PERIODO','DES_CATEGORIA']).apply(Metrics.compute_aggregates).reset_index() # Check: DESCATEGORIA vs DESCATEGORIA3
 
         country_path = f'codpais={country_model}/' if country_model else ''
         s3_serv = S3Buckets()

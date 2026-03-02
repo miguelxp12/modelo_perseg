@@ -7,12 +7,14 @@ from util.s3_manager import S3Buckets
 from util.enums import MAP_PATH
 from training.preprocess_base import PreprocessInter
 import numpy as np
+from typing import Optional, Tuple
 
 
 class PreProcessDataSeg(PreprocessInter):
 
     VARS_TARGET = 'PUP_CALCULADO'
     VARS_TO_PROCESS_AND_TRAIN = [
+        'COD_CUC',
         'RATIO_CONVERSION_ACUMULADO_6M',
         'AVG_RATIO_CONVERSION_X_CAMP_6M',
         'PUP_CUC_MVA_LAG_1',
@@ -62,6 +64,7 @@ class PreProcessDataSeg(PreprocessInter):
         'DSCT_CUC_COMPONENTE'
     ]
     DATA_MAP_DTYPE = {
+        "COD_CUC":"object",
         "RATIO_CONVERSION_ACUMULADO_6M": "float64",
         "AVG_RATIO_CONVERSION_X_CAMP_6M": "float64",
         "PUP_CUC_MVA_LAG_1": "float64",
@@ -252,120 +255,104 @@ class PreProcessDataSeg(PreprocessInter):
         self.new_colnames_multiplicacion = []
         self.FINAL_COLUMNS = []
 
-    def prepare_data(
-        self
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-
-        # preprocess for data from s3 buckets.
+    def prepare_data(self, is_production: bool = True) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[pd.DataFrame], Optional[pd.DataFrame]]:
+        # Preprocessing inicial
         self.df = self.df.dropna(subset=['REACTIONFLAG'])
         self.df = self.df[self.VARS_TO_PROCESS_AND_TRAIN]
         self.df = self.df.astype(self.DATA_MAP_DTYPE)
         self.df = self.df[self.df['DISCOUNT_RANGE'] != 'Out of Range']
-
-        self.df['PUP_CALCULADO'] = self.df['PUP'] # data01['PUP_CALCULADO'] = data01['PUP']
+        self.df['PUP_CALCULADO'] = self.df['PUP']
         self.df = self.df[self.df['ES_PADRE'] == 1].copy()
         self.df = self.df[self.df['REACTIONFLAG'] == 0].copy()
 
-        # FACTOR REPETICION
+        # Transformaciones adicionales
         self.df['FACTOR_REPETICION2'] = self.df['FACTOR_REPETICION']
         self.df.loc[(self.df['FACTOR_REPETICION'] >= 2), 'FACTOR_REPETICION2'] = 2
 
-        # FACTOR CUADRE
         self.df['FACTOR_CUADRE2'] = self.df['FACTOR_CUADRE']
         self.df.loc[(self.df['FACTOR_CUADRE'] >= 3), 'FACTOR_CUADRE2'] = 3
 
-        # COUNT_COD_SAP
         self.df['COUNT_COD_SAP2'] = self.df['COUNT_COD_SAP']
         self.df.loc[(self.df['COUNT_COD_SAP'] >= 2), 'COUNT_COD_SAP2'] = 2
 
-        # PRIORIDADEVENTO
         self.df['PRIORIDADEVENTO2'] = self.df['PRIORIDADEVENTO']
         self.df.loc[(self.df['PRIORIDADEVENTO'] >= 11), 'PRIORIDADEVENTO2'] = 11
 
-        # DISCOUNT_RANGE_MID
         parts = self.df['DISCOUNT_RANGE'].str.split('-', expand=True).astype(float)
         self.df['disc_low'], self.df['disc_high'] = parts[0], parts[1]
         self.df['DISCOUNT_RANGE_MID'] = (self.df['disc_low'] + self.df['disc_high']) / 2
 
-        #===
         self.df['DISCOUNT_RANGE_MID2'] = self.df['DISCOUNT_RANGE_MID']
         self.df.loc[(self.df['DISCOUNT_RANGE_MID'] <= 18), 'DISCOUNT_RANGE_MID2'] = 10.5
         self.df.loc[(self.df['DISCOUNT_RANGE_MID'] >= 50), 'DISCOUNT_RANGE_MID2'] = 55
 
-        # CTD_CONSULTORAS_EXPUESTAS
         self.df['CTD_CONSULTORAS_EXPUESTAS2'] = np.log1p(self.df['CTD_CONSULTORAS_EXPUESTAS'])
 
-        lag_cols  = [
-            'PUP_CUC_MVA_LAG_1',
-            'PUP_CUC_MVA_LAG_2',
-            'PUP_CUC_MVA_LAG_3',
-            'PUP_CUC_MV_LAG_1',
-            'PUP_CUC_MV_LAG_2',
-            'PUP_CUC_MV_LAG_3'
+        # Multiplicaciones entre lag y ratios
+        lag_cols = [
+            'PUP_CUC_MVA_LAG_1', 'PUP_CUC_MVA_LAG_2', 'PUP_CUC_MVA_LAG_3',
+            'PUP_CUC_MV_LAG_1', 'PUP_CUC_MV_LAG_2', 'PUP_CUC_MV_LAG_3'
         ]
-
         ratio_cols = [
-            'RATIO_CONSTANTES_1',
-            'RATIO_CONSTANTES_2',
-            'RATIO_CONSTANTES_3',
-            'RATIO_INCONSTANTES',
-            'RATIO_TOPS',
-            'RATIO_NUEVAS',
-            'RATIO_BRILLA'
+            'RATIO_CONSTANTES_1', 'RATIO_CONSTANTES_2', 'RATIO_CONSTANTES_3',
+            'RATIO_INCONSTANTES', 'RATIO_TOPS', 'RATIO_NUEVAS', 'RATIO_BRILLA'
         ]
-
         for lag in lag_cols:
             for ratio in ratio_cols:
                 new_col = f"{lag}_x_{ratio}"
                 self.df[new_col] = self.df[lag] * self.df[ratio]
                 self.new_colnames_multiplicacion.append(new_col)
 
-        final_columns = self.VARS_NUMERICAS +                ['DESMARCA3', 'DESCATEGORIA3'] +                self.new_colnames_multiplicacion
-
+        final_columns = (
+            self.VARS_NUMERICAS + ['DESMARCA3', 'DESCATEGORIA3'] + self.new_colnames_multiplicacion
+        )
         self.FINAL_COLUMNS = [i for i in final_columns if i not in self.COLUMNS_TO_REMOVE]
-        print(f"self.FINAL_COLUMNS: {self.FINAL_COLUMNS}")
-        final_col = self.FINAL_COLUMNS
-        final_col.sort()
-        print(final_col)
-
-        self.df = self.df[self.df['ES_PADRE'] == 1].copy()
+        self.FINAL_COLUMNS.sort()
 
         self.df['DESMARCA3'] = self.df['DES_MARCA'].map(self.DICT_MARCA).fillna(1)
         self.df['DESCATEGORIA3'] = self.df['DES_CATEGORIA'].map(self.DICT_CATEGORIA).fillna(1)
 
         self.df = self.df[self.df[self.VARS_TARGET].notnull()]
-        self.df, self.df_train_orig, self.df_test = self.split_by_percentage(self.df, self.PERCENTAGE_SPLIT)
 
-        self.df_train = self.df_train_orig.copy()
-        self.df_train = self.df_train_orig[(self.df_train['PUP_CALCULADO'] <= self.UPPER_BOUND)]
-        self.df_train = self.df_train[self.df_train['DES_CLASE'].isin([
-            'CUIDADO PERSONAL',
-            'FRAGANCIAS',
-            'MAQUILLAJE',
-            'TRATAMIENTO FACIAL',
-            'TRATAMIENTO CORPORAL'
-        ])]
+        if is_production:
+            # ✅ Modo producción: usa todo el dataset
+            self.df_train = self.df.copy()
+            self.df_train = self.df_train[(self.df_train['PUP_CALCULADO'] <= self.UPPER_BOUND)]
+            self.df_train = self.df_train[self.df_train['DES_CLASE'].isin([
+                'CUIDADO PERSONAL', 'FRAGANCIAS', 'MAQUILLAJE', 'TRATAMIENTO FACIAL', 'TRATAMIENTO CORPORAL'
+            ])]
+            self.df_train_orig = self.df_train  # ✅ agregado
+            self.weights_train = self.df_train['REAL_UNIDADES_VENDIDAS']
+            self.weights_test = None
+            self.df_test = None
 
-        self.weights_train = self.df_train['REAL_UNIDADES_VENDIDAS']
-        self.weights_test = self.df_test['REAL_UNIDADES_VENDIDAS']
+            x_train = self.df_train[self.FINAL_COLUMNS].copy()
+            y_train = self.df_train[self.VARS_TARGET].copy()
+            return x_train, y_train, None, None
 
-        # print information
-        #self.print_information_datasets_from_percentage_split()
-        self.print_outliers_v1(self.df_train)
-        self.print_outliers_v2(self.df_train)
+        else:
+            # ✅ Modo desarrollo: split entre train/test
+            self.df, self.df_train_orig, self.df_test = self.split_by_percentage(self.df, self.PERCENTAGE_SPLIT)
 
-        x_train = self.df_train[self.FINAL_COLUMNS].copy()
-        y_train = self.df_train[self.VARS_TARGET].copy()
+            self.df_train = self.df_train_orig.copy()
+            self.df_train = self.df_train[(self.df_train['PUP_CALCULADO'] <= self.UPPER_BOUND)]
+            self.df_train = self.df_train[self.df_train['DES_CLASE'].isin([
+                'CUIDADO PERSONAL', 'FRAGANCIAS', 'MAQUILLAJE', 'TRATAMIENTO FACIAL', 'TRATAMIENTO CORPORAL'
+            ])]
 
-        x_test = self.df_test[self.FINAL_COLUMNS].copy()
-        y_test = self.df_test[self.VARS_TARGET].copy()
+            self.weights_train = self.df_train['REAL_UNIDADES_VENDIDAS']
+            self.weights_test = self.df_test['REAL_UNIDADES_VENDIDAS']
 
-        return (
-            x_train,
-            y_train,
-            x_test,
-            y_test
-        )
+            self.print_outliers_v1(self.df_train)
+            self.print_outliers_v2(self.df_train)
+
+            x_train = self.df_train[self.FINAL_COLUMNS].copy()
+            y_train = self.df_train[self.VARS_TARGET].copy()
+            x_test = self.df_test[self.FINAL_COLUMNS].copy()
+            y_test = self.df_test[self.VARS_TARGET].copy()
+
+            return x_train, y_train, x_test, y_test
+
 
     def split_by_periodo(
         self,
@@ -456,11 +443,7 @@ class PreProcessDataSeg(PreprocessInter):
     ) -> pd.DataFrame:
         return self.df_test
 
-    def generate_data_metrics(
-        self,
-        anio_campana: str,
-        country_code: str
-    ) -> None:
+    def generate_data_metrics(self,anio_campana: str,country_code: str) -> None:
 
         country_path = f'codpais={country_code}/' if country_code else ''
         path_metric = os.path.join(
@@ -485,10 +468,10 @@ class PreProcessDataSeg(PreprocessInter):
         s3_serv = S3Buckets()
         s3_serv.save_file(
             key=os.path.join(path_metric, "histogram_codperiod.png"),
-            obj=ax,
+            obj=plt,
             format=S3Buckets.PLOT_FORMAT
         )
-        plt.close(ax.figure)
+        plt.close()
 
         # plot 02
         plt.figure(figsize=(12, 6))
@@ -517,7 +500,7 @@ class PreProcessDataSeg(PreprocessInter):
 
         s3_serv.save_file(
             key=os.path.join(path_metric, "history_cod_period.png"),
-            obj=ax,
+            obj=plt,
             format=S3Buckets.PLOT_FORMAT
         )
         plt.close()
